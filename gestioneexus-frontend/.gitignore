@@ -1,4 +1,4 @@
-# Logs
+# Archivos de Log
 logs
 *.log
 npm-debug.log*
@@ -7,13 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependencias
+/node_modules
+
+# Archivos de compilación (Build)
+/dist
+/dist-ssr
+
+# Archivos de entorno locales
 *.local
 
-# Editor directories and files
-.vscode/*
+# Archivos de configuración de editores y sistema
+.vscode/
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -22,5 +27,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
 

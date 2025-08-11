@@ -10,6 +10,12 @@
 # Public assets folder - We don't want to commit user-uploaded content
 /public/
 
+# Archivo de configuración de la base de datos
+/db/database.js
+
+# Archivo de configuración de la base de datos
+/db/database.js
+
 # Log files
 npm-debug.log*
 yarn-debug.log*
