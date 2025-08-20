@@ -7,7 +7,14 @@ require('dotenv').config();
 const app = express();
 
 // Middlewares
-app.use(cors());
+// AÑADE TODO ESTE BLOQUE EN LUGAR DE app.use(cors());
+const corsOptions = {
+  origin: "*", // Para ser más seguro, aquí deberías poner la URL de tu frontend
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(morgan('dev')); // <-- AÑADE ESTA LÍNEA PARA USARLO
