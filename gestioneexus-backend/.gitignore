@@ -11,7 +11,7 @@
 /public/
 
 # Archivo de configuración de la base de datos
-/db/database.js
+
 
 # Scripts de prueba o temporales
 /hash.js
