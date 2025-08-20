@@ -8,4 +8,5 @@ export default defineConfig({
     react(),
     tailwindcss(), // Úsalo aquí
   ],
+  base: './' // <--- AÑADE ESTA LÍNEA AQUÍ
 })
