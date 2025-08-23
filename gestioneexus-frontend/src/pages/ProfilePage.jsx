@@ -6,6 +6,7 @@ import ChangePasswordModal from '../components/ChangePasswordModal';
 import Swal from 'sweetalert2';
 
 const ProfilePage = () => {
+    // Ahora usamos 'setUser' que es nuestra nueva función 'updateUserContext'
     const { user, setUser } = useContext(AuthContext);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const fileInputRef = useRef(null);
@@ -29,7 +30,9 @@ const ProfilePage = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            setUser(prevUser => ({ ...prevUser, profilePictureUrl: data.profilePictureUrl }));
+            // --- CORRECCIÓN AQUÍ ---
+            // Usamos la función del contexto para actualizar el usuario de forma segura
+            setUser({ profilePictureUrl: data.profilePictureUrl });
 
             Swal.fire('¡Éxito!', data.msg, 'success');
         } catch (error) {
@@ -46,11 +49,13 @@ const ProfilePage = () => {
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
                     <div className="flex-shrink-0 text-center">
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg, image/webp" />
+                        
+                        {/* --- CORRECCIÓN AQUÍ: Aseguramos que la URL se construya siempre --- */}
                         {user.profilePictureUrl ? (
-                            <img src={`${backendUrl}${user.profilePictureUrl}`} alt="Foto de perfil" className="w-32 h-32 rounded-full object-cover mx-auto shadow-md" />
+                            <img src={`${backendUrl}${user.profilePictureUrl}?${new Date().getTime()}`} alt="Foto de perfil" className="w-32 h-32 rounded-full object-cover mx-auto shadow-md" />
                         ) : (
                             <div className="w-32 h-32 bg-[#5D1227] rounded-full flex items-center justify-center text-white text-5xl font-bold mx-auto shadow-md">
-                                {user.name.charAt(0).toUpperCase()}
+                                {user.fullName ? user.fullName.charAt(0).toUpperCase() : '?'}
                             </div>
                         )}
                         <button onClick={handlePhotoClick} className="w-full mt-2 text-sm text-blue-600 hover:underline">Cambiar foto</button>
@@ -58,7 +63,7 @@ const ProfilePage = () => {
                     <div className="space-y-4 flex-grow w-full">
                         <div>
                             <label className="text-sm font-medium text-gray-500">Nombre Completo</label>
-                            <p className="text-lg text-gray-800 p-3 bg-gray-100 rounded-md">{user.name}</p>
+                            <p className="text-lg text-gray-800 p-3 bg-gray-100 rounded-md">{user.fullName}</p>
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-500">Rol</label>

@@ -38,16 +38,21 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         <div className={`fixed inset-y-0 left-0 bg-[#5D1227] text-white flex flex-col h-full shadow-lg z-30 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'} w-64`}>
             <div className="p-6 text-center flex justify-between items-center lg:justify-center">
                 <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center text-gray-500">Logo</div>
+                    {/* --- LOGO AÑADIDO AQUÍ --- */}
+                    <img src="/images/logo_fondo_oscuro.png" alt="Logo" className="w-16 h-16 object-contain rounded-full mx-auto mb-2" />
                     <h2 className="text-xl font-bold">Variedades Cinthya</h2>
                 </div>
                 <button onClick={toggleSidebar} className="lg:hidden text-white hover:text-yellow-400">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <div className="p-4 text-center border-y border-white border-opacity-20">
-                <p className="text-sm">BIENVENIDO</p>
-                <p className="font-semibold text-lg">{user?.name || 'Usuario'}</p>
+            <div className="p-4 flex items-center justify-center border-y border-white border-opacity-20">
+                {/* --- LOGO AÑADIDO AQUÍ --- */}
+                <img src="/images/logo_fondo_oscuro.png" alt="Avatar" className="h-10 w-10 object-contain rounded-full mr-4" />
+                <div className="text-left">
+                    <p className="text-sm">BIENVENIDO</p>
+                    <p className="font-semibold text-lg">{user?.name || 'Usuario'}</p>
+                </div>
             </div>
 
             <nav className="flex-1 mt-6 space-y-2 overflow-y-auto">

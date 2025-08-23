@@ -12,8 +12,6 @@ const DashboardLayout = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
 
-    // --- CORRECCIÓN AQUÍ: Añadimos '/metrics' y '/profile' a la lista de exclusión ---
-    // Lista de rutas donde el buscador global NO debe aparecer
     const hideGlobalSearchOnRoutes = [
         '/reports', 
         '/sales-history', 
@@ -32,14 +30,21 @@ const DashboardLayout = () => {
             {isSidebarOpen && <div onClick={toggleSidebar} className="fixed inset-0 bg-black opacity-50 z-20 lg:hidden"></div>}
 
             <div className="flex-1 flex flex-col overflow-y-auto">
-                <div className="flex-1 p-4 sm:p-6 md:p-8 m-4 md:m-8 bg-white rounded-2xl shadow-xl">
+                {/* --- CAMBIOS PARA RESPONSIVIDAD AQUÍ --- */}
+                {/* Hemos ajustado los márgenes (m) y el padding (p) para que sean más adaptativos.
+                  - En pantallas pequeñas, los márgenes son más pequeños (m-2).
+                  - En pantallas medianas (md), crecen un poco (m-4).
+                  - En pantallas grandes (lg), son más amplios (m-6).
+                  Esto evita que el contenedor principal ocupe demasiado espacio en pantallas de portátiles.
+                */}
+                <div className="flex-1 p-4 sm:p-6 m-2 md:m-4 lg:m-6 bg-white rounded-2xl shadow-xl">
                     <Header 
                         searchTerm={searchTerm} 
                         setSearchTerm={setSearchTerm} 
                         toggleSidebar={toggleSidebar}
                         showGlobalSearch={showGlobalSearch}
                     />
-                    <main className="mt-8">
+                    <main className="mt-6 md:mt-8">
                         <Outlet context={{ searchTerm, setSearchTerm }} />
                     </main>
                 </div>

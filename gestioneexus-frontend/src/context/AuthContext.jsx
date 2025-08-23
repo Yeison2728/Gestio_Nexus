@@ -19,13 +19,8 @@ export const AuthProvider = ({ children }) => {
             try {
                 const { data } = await api.get('/auth/renew');
                 localStorage.setItem('token', data.token);
-                const decodedUser = jwtDecode(data.token);
-                setUser({
-                    id: decodedUser.uid,
-                    name: data.user.name,
-                    role: decodedUser.role,
-                    profilePictureUrl: data.user.profile_picture_url
-                });
+                // Usamos la información del usuario que viene del backend, es la más fiable
+                setUser(data.user);
             } catch (error) {
                 localStorage.removeItem('token');
                 setUser(null);
@@ -40,13 +35,8 @@ export const AuthProvider = ({ children }) => {
         try {
             const { data } = await api.post('/auth/login', { email, password });
             localStorage.setItem('token', data.token);
-            const decodedUser = jwtDecode(data.token);
-            setUser({
-                id: decodedUser.uid,
-                name: data.user.fullName,
-                role: decodedUser.role,
-                profilePictureUrl: data.user.profile_picture_url
-            });
+            // Guardamos el objeto de usuario completo que nos da el backend
+            setUser(data.user);
             return true;
         } catch (error) {
             Swal.fire({ icon: 'error', title: 'Error en el inicio de sesión', text: error.response?.data?.msg || 'Credenciales incorrectas.' });
@@ -59,8 +49,18 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    // --- NUEVA FUNCIÓN PARA ACTUALIZAR EL USUARIO EN EL CONTEXTO ---
+    // Esta función nos permitirá actualizar el estado del usuario desde cualquier
+    // componente, como la página de perfil después de cambiar la foto.
+    const updateUserContext = (newUserData) => {
+        setUser(prevUser => ({
+            ...prevUser,
+            ...newUserData
+        }));
+    };
+
     return (
-        <AuthContext.Provider value={{ user, setUser, login, logout, loading, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, setUser: updateUserContext, login, logout, loading, isAuthenticated: !!user }}>
             {children}
         </AuthContext.Provider>
     );

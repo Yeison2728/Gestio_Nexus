@@ -15,7 +15,7 @@ const LayawayPage = () => {
     const [viewingPlan, setViewingPlan] = useState(null);
     const [statusFilter, setStatusFilter] = useState('active');
 
-    useEffect(() => {
+    const fetchPlans = () => {
         setLoading(true);
         const timerId = setTimeout(() => {
             api.get('/layaway', { params: { search: searchTerm, status: statusFilter } })
@@ -24,20 +24,19 @@ const LayawayPage = () => {
                 .finally(() => { setLoading(false); });
         }, 500);
         return () => clearTimeout(timerId);
+    };
+
+    useEffect(() => {
+        fetchPlans();
     }, [searchTerm, statusFilter]);
 
     const handlePlanAdded = () => {
-        setLoading(true);
-        api.get('/layaway', { params: { search: '', status: 'active' } })
-            .then(response => {
-                setPlans(response.data);
-                setStatusFilter('active');
-            })
-            .finally(() => setLoading(false));
+        setStatusFilter('active');
+        fetchPlans();
     };
     
-    const handlePlanUpdated = (updatedPlan) => {
-        setPlans(prevPlans => prevPlans.map(p => p.id === updatedPlan.id ? { ...p, ...updatedPlan } : p));
+    const handlePlanUpdated = () => {
+        fetchPlans();
     };
 
     const handleCancelPlan = (planId) => {
@@ -54,8 +53,8 @@ const LayawayPage = () => {
             if (result.isConfirmed) {
                 try {
                     await api.delete(`/layaway/${planId}`);
-                    setPlans(prevPlans => prevPlans.filter(p => p.id !== planId));
                     Swal.fire('¡Cancelado!', 'El plan separe ha sido cancelado.', 'success');
+                    fetchPlans();
                 } catch (error) {
                     Swal.fire('Error', 'No se pudo cancelar el plan.', 'error');
                 }
@@ -119,7 +118,8 @@ const LayawayPage = () => {
                                     <td className="px-6 py-4"><span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${plan.status === 'active' ? 'bg-blue-100 text-blue-800' : plan.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{plan.status}</span></td>
                                     <td className="px-6 py-4 text-center space-x-4">
                                         <button onClick={() => openViewModal(plan)} className="text-blue-600 hover:underline font-semibold">Ver/Abonar</button>
-                                        {plan.status === 'active' && <button onClick={() => handleCancelPlan(plan.id)} className="text-red-600 hover:underline font-semibold">Cancelar</button>}
+                                        {/* --- CORRECCIÓN AQUÍ: Se permite cancelar si está activo O vencido --- */}
+                                        {(plan.status === 'active' || plan.status === 'overdue') && <button onClick={() => handleCancelPlan(plan.id)} className="text-red-600 hover:underline font-semibold">Cancelar</button>}
                                     </td>
                                 </tr>
                             ))}
@@ -135,7 +135,13 @@ const LayawayPage = () => {
             </Modal>
             
             <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title={`Detalle del Plan #${viewingPlan?.id}`}>
-                <LayawayViewModal plan={viewingPlan} onClose={() => setIsViewModalOpen(false)} onPlanUpdated={handlePlanUpdated} />
+                {viewingPlan && (
+                    <LayawayViewModal 
+                        plan={viewingPlan} 
+                        onClose={() => setIsViewModalOpen(false)} 
+                        onPlanUpdated={handlePlanUpdated} 
+                    />
+                )}
             </Modal>
         </div>
     );

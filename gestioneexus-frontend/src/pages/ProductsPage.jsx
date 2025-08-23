@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import api from '../api/api';
 import Modal from '../components/Modal';
 import ProductForm from '../components/ProductForm';
-import Pagination from '../components/Pagination'; // <-- 1. IMPORTAMOS EL COMPONENTE
+import Pagination from '../components/Pagination';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 
 const ProductsPage = () => {
     const { searchTerm } = useOutletContext(); 
@@ -13,58 +14,58 @@ const ProductsPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     
-    // --- 2. AÑADIMOS ESTADOS PARA LA PAGINACIÓN ---
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+    
+    const fileInputRef = useRef(null);
+
+    const fetchProducts = async (pageToFetch = currentPage) => {
+        setLoading(true);
+        try {
+            const { data } = await api.get('/products', {
+                params: { 
+                    search: debouncedSearchTerm,
+                    page: pageToFetch 
+                }
+            });
+            setProducts(data.products);
+            setTotalPages(data.totalPages);
+            setCurrentPage(data.currentPage);
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'No se pudieron cargar los productos.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         const timerId = setTimeout(() => {
             setDebouncedSearchTerm(searchTerm);
-            setCurrentPage(1); // Reseteamos a la página 1 en cada nueva búsqueda
+            setCurrentPage(1);
         }, 500);
         return () => clearTimeout(timerId);
     }, [searchTerm]);
 
     useEffect(() => {
-        const fetchProducts = async () => {
-            setLoading(true);
-            try {
-                // 3. Enviamos la página actual en la petición a la API
-                const { data } = await api.get('/products', {
-                    params: { 
-                        search: debouncedSearchTerm,
-                        page: currentPage 
-                    }
-                });
-                // 4. Actualizamos los productos y los datos de paginación
-                setProducts(data.products);
-                setTotalPages(data.totalPages);
-            } catch (err) {
-                console.error(err);
-                Swal.fire('Error', 'No se pudieron cargar los productos.', 'error');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchProducts();
-    }, [debouncedSearchTerm, currentPage]); // Se ejecuta cuando cambia la búsqueda O la página actual
+        fetchProducts(currentPage);
+    }, [debouncedSearchTerm, currentPage]);
 
     const openModalForCreate = () => { setEditingProduct(null); setIsModalOpen(true); };
     const openModalForEdit = (product) => { setEditingProduct(product); setIsModalOpen(true); };
     const closeModal = () => { setIsModalOpen(false); setEditingProduct(null); };
-    const handleProductAdded = (newProduct) => {
-        // Al añadir, vamos a la primera página para ver el nuevo producto
-        if (currentPage !== 1) {
-            setCurrentPage(1);
-        } else {
-            setProducts(prev => [newProduct, ...prev]);
-        }
+    
+    const handleProductAdded = () => {
+        if (currentPage !== 1) setCurrentPage(1);
+        else fetchProducts(1);
     };
-    const handleProductUpdated = (updatedProduct) => {
-        setProducts(prev => prev.map(p => (p.id === updatedProduct.id ? updatedProduct : p)));
+    
+    const handleProductUpdated = () => {
+        fetchProducts(currentPage);
     };
+
     const handleDelete = (productId) => {
         Swal.fire({
             title: '¿Estás seguro?', text: "El producto será desactivado.", icon: 'warning',
@@ -75,8 +76,7 @@ const ProductsPage = () => {
                 try {
                     await api.delete(`/products/${productId}`);
                     Swal.fire('¡Desactivado!', 'El producto ha sido desactivado.', 'success');
-                    // Refrescamos la lista actual para quitar el producto
-                    setProducts(prev => prev.filter(p => p.id !== productId));
+                    fetchProducts(currentPage);
                 } catch (error) {
                     Swal.fire('Error', 'No se pudo desactivar el producto.', 'error');
                 }
@@ -84,46 +84,135 @@ const ProductsPage = () => {
         });
     };
 
+    const handleFileImportClick = () => {
+        fileInputRef.current.click();
+    };
+
+    const handleFileUpload = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+
+                if (json.length === 0) {
+                    Swal.fire('Archivo vacío', 'El archivo Excel no contiene datos para importar.', 'warning');
+                    return;
+                }
+
+                const requiredColumns = ['NOMBRE', 'MARCA', 'CATEGORIA', 'TALLAS', 'REFERENCIA', 'CANTIDAD', 'PRECIO', 'COSTO'];
+                const firstRowKeys = Object.keys(json[0]);
+                const hasAllColumns = requiredColumns.every(col => firstRowKeys.includes(col));
+
+                if (!hasAllColumns) {
+                    Swal.fire('Columnas incorrectas', `El archivo debe tener exactamente las siguientes columnas: ${requiredColumns.join(', ')}`, 'error');
+                    return;
+                }
+
+                importProducts(json);
+
+            } catch (error) {
+                Swal.fire('Error de lectura', 'No se pudo procesar el archivo Excel. Verifique el formato.', 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        event.target.value = '';
+    };
+
+    const importProducts = async (productsToImport) => {
+        Swal.fire({
+            title: `¿Importar ${productsToImport.length} productos?`,
+            text: "Esta acción los agregará a tu inventario. Las referencias duplicadas causarán un error.",
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#16A34A',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, importar',
+            cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const response = await api.post('/products/bulk-import', { products: productsToImport });
+                    Swal.fire('¡Éxito!', response.data.msg, 'success');
+                    handleProductAdded();
+                } catch (error) {
+                    Swal.fire('Error en la importación', error.response?.data?.msg || 'No se pudieron importar los productos.', 'error');
+                }
+            }
+        });
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            {/* --- CAMBIO PARA RESPONSIVIDAD AQUÍ --- */}
+            {/* Hacemos que este contenedor sea flexible y permita que los elementos se envuelvan (wrap)
+              en pantallas pequeñas. 'flex-col sm:flex-row' hace que los elementos se apilen
+              verticalmente en pantallas muy pequeñas y vuelvan a estar en fila en pantallas más grandes. */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-3xl font-bold text-gray-800">Gestión de Productos</h1>
-                <button 
-                    onClick={openModalForCreate} 
-                    className="bg-[#16A34A] text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors shadow-md"
-                >
-                    + Agregar Producto
-                </button>
+                <div className="flex items-center space-x-2 flex-shrink-0">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept=".xlsx, .xls, .csv"
+                    />
+                    <button
+                        onClick={handleFileImportClick}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md"
+                    >
+                        Importar Productos
+                    </button>
+                    <button 
+                        onClick={openModalForCreate} 
+                        className="bg-[#16A34A] text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors shadow-md"
+                    >
+                        + Agregar Producto
+                    </button>
+                </div>
             </div>
             
-            <div className="bg-white p-6 rounded-lg shadow-lg overflow-x-auto">
+            {/* --- CAMBIO PARA RESPONSIVIDAD AQUÍ --- */}
+            {/* El 'overflow-x-auto' es la clave. Le dice al navegador que si el contenido
+              interior (la tabla) es más ancho que el contenedor, debe mostrar una barra
+              de scroll horizontal en lugar de romper el diseño. */}
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg overflow-x-auto">
                 {loading ? (
                     <div className="text-center py-8">Cargando productos...</div>
                 ) : products.length > 0 ? (
-                    <table className="w-full text-sm text-left text-gray-600">
+                    // La clase 'min-w-full' asegura que la tabla intente ocupar todo el espacio,
+                    // pero el 'overflow-x-auto' del div padre la controlará.
+                    <table className="min-w-full text-sm text-left text-gray-600">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100">
                             <tr>
-                                <th className="px-6 py-3">Nombre</th>
-                                <th className="px-6 py-3">Marca</th>
-                                <th className="px-6 py-3">Categoría</th>
-                                <th className="px-6 py-3">Tallas</th>
-                                <th className="px-6 py-3">Referencia</th>
-                                <th className="px-6 py-3 text-center">Cantidad</th>
-                                <th className="px-6 py-3">Precio</th>
-                                <th className="px-6 py-3 text-center">Acciones</th>
+                                <th className="px-4 py-3">Nombre</th>
+                                <th className="px-4 py-3">Marca</th>
+                                <th className="px-4 py-3">Categoría</th>
+                                <th className="px-4 py-3">Tallas</th>
+                                <th className="px-4 py-3">Referencia</th>
+                                <th className="px-4 py-3 text-center">Cantidad</th>
+                                <th className="px-4 py-3">Precio</th>
+                                <th className="px-4 py-3 text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {products.map((product) => (
                                 <tr key={product.id} className="bg-white border-b hover:bg-gray-50">
-                                    <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{product.name}</th>
-                                    <td className="px-6 py-4">{product.brand}</td>
-                                    <td className="px-6 py-4">{product.category}</td>
-                                    <td className="px-6 py-4">{product.sizes}</td>
-                                    <td className="px-6 py-4">{product.reference}</td>
-                                    <td className="px-6 py-4 text-center">{product.quantity}</td>
-                                    <td className="px-6 py-4">${new Intl.NumberFormat('es-CO').format(product.price)}</td>
-                                    <td className="px-6 py-4 text-center">
+                                    <th scope="row" className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{product.name}</th>
+                                    <td className="px-4 py-3 whitespace-nowrap">{product.brand}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">{product.category}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">{product.sizes}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">{product.reference}</td>
+                                    <td className="px-4 py-3 text-center">{product.quantity}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">${new Intl.NumberFormat('es-CO').format(product.price)}</td>
+                                    <td className="px-4 py-3 text-center whitespace-nowrap">
                                         <div className="flex justify-center items-center gap-4">
                                             <button onClick={() => openModalForEdit(product)} className="text-blue-600 hover:underline font-semibold">Editar</button>
                                             <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:underline font-semibold">Desactivar</button>
@@ -135,11 +224,10 @@ const ProductsPage = () => {
                     </table>
                 ) : (
                     <div className="text-center py-8 text-gray-500">
-                        No se encontraron productos {searchTerm && `para la búsqueda '${searchTerm}'`}.
+                        No se encontraron productos {debouncedSearchTerm && `para la búsqueda '${debouncedSearchTerm}'`}.
                     </div>
                 )}
                 
-                {/* --- 5. RENDERIZAMOS EL COMPONENTE DE PAGINACIÓN --- */}
                 <Pagination 
                     currentPage={currentPage} 
                     totalPages={totalPages} 

@@ -15,7 +15,7 @@ const ChangePasswordModal = ({ closeModal }) => {
         e.preventDefault();
         if (formData.newPassword !== formData.confirmPassword) {
             Swal.fire('Error', 'Las nuevas contraseñas no coinciden.', 'error');
-            return; 
+            return;
         }
 
         // --- VALIDACIÓN DE FRONTEND AÑADIDA ---

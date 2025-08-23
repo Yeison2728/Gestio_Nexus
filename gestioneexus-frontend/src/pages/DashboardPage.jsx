@@ -47,7 +47,7 @@ const DashboardPage = () => {
 
     return (
         <div className="space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
                 <StatCard title="Usuarios" value={stats?.userCount ?? 0} icon={<UserIcon />} color="bg-red-400" />
                 <StatCard title="Productos" value={stats?.productCount ?? 0} icon={<ProductosIcon />} color="bg-blue-400" />
                 <StatCard title="Ventas" value={stats?.salesCount ?? 0} icon={<VentasIcon />} color="bg-green-400" />
@@ -56,7 +56,13 @@ const DashboardPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-[#F3F4F6] p-4 rounded-lg">
                     <h3 className="font-bold text-lg text-gray-800 mb-4">PRODUCTOS MÁS VENDIDOS</h3>
-                    <div className="overflow-hidden rounded-lg">
+                    {/* --- CAMBIO PARA RESPONSIVIDAD AQUÍ --- */}
+                    {/* Cambiamos 'overflow-hidden' por 'overflow-x-auto'.
+                      Esto asegura que si la tabla es demasiado ancha para la pantalla,
+                      aparecerá una barra de scroll horizontal en lugar de que la tabla
+                      se desborde y rompa el diseño.
+                    */}
+                    <div className="overflow-x-auto rounded-lg">
                         <table className="w-full text-sm text-left text-gray-800">
                             <thead className="text-xs text-white uppercase bg-[#5D1227]">
                                 <tr>
@@ -80,7 +86,8 @@ const DashboardPage = () => {
 
                 <div className="bg-[#F3F4F6] p-4 rounded-lg">
                     <h3 className="font-bold text-lg text-gray-800 mb-4">ÚLTIMAS VENTAS</h3>
-                    <div className="overflow-hidden rounded-lg">
+                    {/* --- CAMBIO PARA RESPONSIVIDAD AQUÍ --- */}
+                    <div className="overflow-x-auto rounded-lg">
                         <table className="w-full text-sm text-left text-gray-800">
                             <thead className="text-xs text-white uppercase bg-[#5D1227]">
                                 <tr>

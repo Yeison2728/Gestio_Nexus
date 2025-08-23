@@ -20,9 +20,12 @@ const LoginPage = () => {
         <div className="min-h-screen flex font-sans">
             <div className="hidden lg:flex w-1/2 bg-white items-center justify-center p-12">
                 <div className="text-center">
-                    <div className="w-48 h-48 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center text-gray-500">
-                        Logo Variedades Cinthya
-                    </div>
+                    {/* --- LOGO AÑADIDO AQUÍ --- */}
+                    <img 
+                        src="/images/logo_almacen.png" 
+                        alt="Logo Variedades Cinthya"
+                        className="w-48 h-48 object-contain rounded-full mx-auto mb-4"
+                    />
                 </div>
             </div>
 

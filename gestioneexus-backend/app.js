@@ -1,24 +1,15 @@
 const express = require('express');
 const cors = require('cors');
-const morgan = require('morgan'); // <--- CAMBIA ESTA LÍNEA
+const morgan = 'morgan';
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
 // Middlewares
-// AÑADE TODO ESTE BLOQUE EN LUGAR DE app.use(cors());
-const corsOptions = {
-  origin: "*", // Para ser más seguro, aquí deberías poner la URL de tu frontend
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(morgan('dev')); // <-- AÑADE ESTA LÍNEA PARA USARLO
-
 
 // Rutas
 app.use('/api/auth', require('./routes/auth.routes'));

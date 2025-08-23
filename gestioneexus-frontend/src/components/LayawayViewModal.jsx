@@ -1,12 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import Swal from 'sweetalert2';
 
 const LayawayViewModal = ({ plan, onClose, onPlanUpdated }) => {
     const [paymentAmount, setPaymentAmount] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    // --- NUEVOS ESTADOS PARA LOS PRODUCTOS DEL PLAN ---
+    const [planProducts, setPlanProducts] = useState([]);
+    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
-    // Si no hay un plan para mostrar, no renderiza nada.
+    // --- NUEVO EFECTO PARA CARGAR LOS DETALLES COMPLETOS DEL PLAN ---
+    useEffect(() => {
+        if (plan?.id) {
+            const fetchPlanDetails = async () => {
+                setIsLoadingProducts(true);
+                try {
+                    // Asumimos que este endpoint devuelve el plan con un array de productos
+                    const { data } = await api.get(`/layaway/${plan.id}`);
+                    setPlanProducts(data.products || []); // Nos aseguramos que sea un array
+                } catch (error) {
+                    console.error("Error fetching plan details:", error);
+                    setPlanProducts([]); // En caso de error, dejamos la lista vacía
+                } finally {
+                    setIsLoadingProducts(false);
+                }
+            };
+            fetchPlanDetails();
+        }
+    }, [plan?.id]); // Se dispara cada vez que el plan en el modal cambia
+
     if (!plan) return null;
 
     const handleAddPayment = async (e) => {
@@ -25,14 +47,12 @@ const LayawayViewModal = ({ plan, onClose, onPlanUpdated }) => {
         
         setIsSubmitting(true);
         try {
-            // Hacemos la petición PUT al backend para añadir el nuevo abono
             const { data } = await api.put(`/layaway/${plan.id}`, {
                 new_payment_amount: amount
             });
             
-            // Pasamos el plan actualizado (que el backend debería devolver) al componente padre
-            onPlanUpdated(data);
-            onClose(); // Cerramos el modal
+            onPlanUpdated(data); 
+            onClose();
             Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Abono registrado correctamente.' });
 
         } catch (error) {
@@ -61,6 +81,30 @@ const LayawayViewModal = ({ plan, onClose, onPlanUpdated }) => {
                 <p className="text-sm text-gray-600">Fecha Límite: {formatDate(plan.deadline)}</p>
             </div>
 
+            {/* --- NUEVA SECCIÓN PARA MOSTRAR PRODUCTOS --- */}
+            <div>
+                <h4 className="font-bold text-lg text-gray-800 mb-2">Productos Separados</h4>
+                <div className="border rounded-lg max-h-40 overflow-y-auto">
+                    {isLoadingProducts ? (
+                        <p className="p-4 text-center text-gray-500">Cargando productos...</p>
+                    ) : planProducts.length > 0 ? (
+                        <ul className="divide-y divide-gray-200">
+                            {planProducts.map(item => (
+                                <li key={item.product_id} className="p-3 flex justify-between items-center text-sm">
+                                    <div>
+                                        <p className="font-semibold text-gray-800">{item.product_name}</p>
+                                        <p className="text-gray-500">Cantidad: {item.quantity}</p>
+                                    </div>
+                                    <p className="font-medium text-gray-700">{formatCurrency(item.price_at_sale * item.quantity)}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="p-4 text-center text-gray-500">No se encontraron productos para este plan.</p>
+                    )}
+                </div>
+            </div>
+
             <div className="bg-gray-100 p-4 rounded-lg grid grid-cols-3 gap-4 text-center">
                 <div>
                     <p className="text-sm text-gray-500">Valor Total</p>
@@ -76,30 +120,30 @@ const LayawayViewModal = ({ plan, onClose, onPlanUpdated }) => {
                 </div>
             </div>
 
-            {plan.status === 'active' && (
+            {(plan.status === 'active' || plan.status === 'overdue') && (
                  <form onSubmit={handleAddPayment} className="pt-4 border-t">
-                    <h4 className="font-bold text-lg text-gray-800 mb-2">Registrar Nuevo Abono</h4>
-                    <div className="flex items-center gap-4">
-                        <input
-                            type="number"
-                            step="0.01"
-                            placeholder="Monto del abono"
-                            value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D1227]"
-                            required
-                        />
-                        <button 
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="px-4 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-green-700 font-semibold whitespace-nowrap disabled:bg-gray-400"
-                        >
-                            {isSubmitting ? 'Registrando...' : 'Registrar Abono'}
-                        </button>
-                    </div>
-                </form>
+                     <h4 className="font-bold text-lg text-gray-800 mb-2">Registrar Nuevo Abono</h4>
+                     <div className="flex items-center gap-4">
+                         <input
+                             type="number"
+                             step="0.01"
+                             placeholder="Monto del abono"
+                             value={paymentAmount}
+                             onChange={(e) => setPaymentAmount(e.target.value)}
+                             className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D1227]"
+                             required
+                         />
+                         <button 
+                             type="submit"
+                             disabled={isSubmitting}
+                             className="px-4 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-green-700 font-semibold whitespace-nowrap disabled:bg-gray-400"
+                         >
+                             {isSubmitting ? 'Registrando...' : 'Registrar Abono'}
+                         </button>
+                     </div>
+                 </form>
             )}
-           
+            
             <div className="flex justify-end pt-4 border-t mt-4">
                  <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold">Cerrar</button>
             </div>

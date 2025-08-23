@@ -5,11 +5,8 @@ const getLayawayPlans = async (req, res) => {
     const { search = '', status = 'active' } = req.query;
 
     try {
-        // --- ¡NUEVA LÓGICA AÑADIDA! ---
-        // Antes de consultar, actualizamos todos los planes activos cuya fecha límite ya pasó.
         await pool.query("UPDATE layaway_plans SET status = 'overdue' WHERE deadline < CURDATE() AND status = 'active'");
-        // --------------------------------
-
+        
         const searchTerm = `%${search}%`;
         const queryParams = [searchTerm, searchTerm];
         
@@ -30,6 +27,40 @@ const getLayawayPlans = async (req, res) => {
         res.status(500).json({ msg: 'Error al obtener los planes separe' });
     }
 };
+
+const getLayawayPlanById = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [[plan]] = await pool.query('SELECT * FROM layaway_plans WHERE id = ?', [id]);
+
+        if (!plan) {
+            return res.status(404).json({ msg: 'Plan separe no encontrado' });
+        }
+
+        // Se corrige la consulta para tomar el precio actual del producto
+        const [products] = await pool.query(
+            `SELECT 
+                d.quantity, 
+                p.price as price_at_sale, 
+                p.name as product_name, 
+                p.id as product_id 
+            FROM layaway_plan_details d 
+            JOIN products p ON d.product_id = p.id 
+            WHERE d.layaway_plan_id = ?`,
+            [id]
+        );
+
+        res.json({
+            ...plan,
+            products: products
+        });
+
+    } catch (error) {
+        console.error("Error al obtener el detalle del plan separe:", error);
+        res.status(500).json({ msg: 'Error al obtener el detalle del plan' });
+    }
+};
+
 
 const createLayawayPlan = async (req, res) => {
     const { customer_name, customer_id_doc, customer_contact, total_value, down_payment, deadline, products } = req.body;
@@ -53,6 +84,7 @@ const createLayawayPlan = async (req, res) => {
         const planId = planResult.insertId;
 
         for (const product of products) {
+            // Se revierte al INSERT original, compatible con tu base de datos
             await connection.query(
                 'INSERT INTO layaway_plan_details (layaway_plan_id, product_id, quantity) VALUES (?, ?, ?)',
                 [planId, product.product_id, product.quantity]
@@ -137,6 +169,7 @@ const deleteLayawayPlan = async (req, res) => {
 
 module.exports = {
     getLayawayPlans,
+    getLayawayPlanById,
     createLayawayPlan,
     updateLayawayPlan,
     deleteLayawayPlan

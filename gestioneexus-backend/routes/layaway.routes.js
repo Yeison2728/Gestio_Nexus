@@ -1,7 +1,16 @@
 // /routes/layaway.routes.js
 const { Router } = require('express');
 const { check } = require('express-validator');
-const { createLayawayPlan, getLayawayPlans, updateLayawayPlan, deleteLayawayPlan } = require('../controllers/layaway.controller');
+
+// --- 1. IMPORTAMOS LA NUEVA FUNCIÓN DEL CONTROLADOR ---
+const { 
+    createLayawayPlan, 
+    getLayawayPlans, 
+    updateLayawayPlan, 
+    deleteLayawayPlan,
+    getLayawayPlanById // <-- ¡Importante!
+} = require('../controllers/layaway.controller');
+
 const { validateJWT } = require('../middlewares/validate-jwt');
 const { validateFields } = require('../middlewares/validate-fields');
 
@@ -10,6 +19,10 @@ const router = Router();
 router.use(validateJWT);
 
 router.get('/', getLayawayPlans);
+
+// --- 2. AÑADIMOS LA RUTA QUE FALTABA ---
+// Esta ruta maneja las peticiones para obtener un plan específico por su ID
+router.get('/:id', getLayawayPlanById);
 
 router.post('/', [
     check('customer_name', 'El nombre del cliente es obligatorio').not().isEmpty(),

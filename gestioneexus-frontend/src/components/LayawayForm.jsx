@@ -10,7 +10,7 @@ const ProductSelector = ({ products, onAdd }) => {
 
     const filteredProducts = products.filter(p => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.reference.toLowerCase().includes(searchTerm.toLowerCase())
+        (p.reference && p.reference.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const handleAddClick = () => {
@@ -26,21 +26,21 @@ const ProductSelector = ({ products, onAdd }) => {
     };
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-2">
             <input 
                 type="text"
                 placeholder="Buscar producto por nombre o referencia..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
+                className="w-full p-2 border border-gray-300 rounded-md text-sm"
             />
-            <div className="flex items-end gap-2">
-                <select onChange={(e) => setSelectedId(e.target.value)} value={selectedId} className="flex-grow p-2 border border-gray-300 rounded-md h-10">
+            <div className="flex flex-col md:flex-row items-stretch md:items-end gap-2">
+                <select onChange={(e) => setSelectedId(e.target.value)} value={selectedId} className="flex-grow p-2 border border-gray-300 rounded-md h-9 text-sm">
                     <option value="">-- Selecciona un producto --</option>
                     {filteredProducts.map(p => <option key={p.id} value={p.id} disabled={p.quantity === 0}>{p.name} (Stock: {p.quantity})</option>)}
                 </select>
-                <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} min="1" className="w-20 p-2 border border-gray-300 rounded-md h-10" />
-                <button type="button" onClick={handleAddClick} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 h-10">Añadir</button>
+                <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} min="1" className="w-full md:w-20 p-2 border border-gray-300 rounded-md h-9 text-sm" />
+                <button type="button" onClick={handleAddClick} className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 h-9 flex-shrink-0 text-sm">Añadir</button>
             </div>
         </div>
     );
@@ -61,7 +61,7 @@ const LayawayForm = ({ onPlanAdded, closeModal }) => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const { data } = await api.get('/products');
+                const { data } = await api.get('/products', { params: { limit: 1000 }});
                 setAvailableProducts(data.products);
             } catch (error) { console.error("No se pudieron cargar los productos", error); }
         };
@@ -70,10 +70,8 @@ const LayawayForm = ({ onPlanAdded, closeModal }) => {
 
     const handleCustomerChange = (e) => {
         const { name, value } = e.target;
-
-        // --- VALIDACIÓN AÑADIDA PARA CAMPOS NUMÉRICOS ---
-        if (name === 'customer_id_doc' || name === 'customer_contact') {
-            const numericValue = value.replace(/[^0-9]/g, ''); // Solo permite números
+        if (name === 'customer_id_doc' || name === 'customer_contact' || name === 'down_payment') {
+            const numericValue = value.replace(/[^0-9]/g, '');
             setCustomerData(prev => ({ ...prev, [name]: numericValue }));
         } else {
             setCustomerData(prev => ({ ...prev, [name]: value }));
@@ -104,7 +102,6 @@ const LayawayForm = ({ onPlanAdded, closeModal }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // --- VALIDACIONES AÑADIDAS ANTES DE ENVIAR ---
         if (selectedProducts.length === 0) {
             Swal.fire('Error', 'Debes agregar al menos un producto al plan.', 'error');
             return;
@@ -133,26 +130,26 @@ const LayawayForm = ({ onPlanAdded, closeModal }) => {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <fieldset className="border p-4 rounded-lg">
-                <legend className="text-lg font-semibold px-2 text-gray-700">Datos del Cliente</legend>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+            <fieldset className="border p-3 rounded-lg">
+                <legend className="text-base font-semibold px-2 text-gray-700">Datos del Cliente</legend>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input name="customer_name" placeholder="Nombre Completo" value={customerData.customer_name} onChange={handleCustomerChange} required className="p-2 border rounded-md" />
                     <input name="customer_contact" placeholder="Contacto (Teléfono)" value={customerData.customer_contact} onChange={handleCustomerChange} required className="p-2 border rounded-md" inputMode="numeric" pattern="[0-9]*" />
                     <input name="customer_id_doc" placeholder="Cédula (Opcional)" value={customerData.customer_id_doc} onChange={handleCustomerChange} className="p-2 border rounded-md" inputMode="numeric" pattern="[0-9]*" />
                     <div>
-                        <label className="text-sm text-gray-600 ml-1">Fecha Límite</label>
+                        <label className="text-xs text-gray-600 ml-1">Fecha Límite</label>
                         <input name="deadline" type="date" value={customerData.deadline} onChange={handleCustomerChange} required className="w-full p-2 border rounded-md" />
                     </div>
                 </div>
             </fieldset>
 
-            <fieldset className="border p-4 rounded-lg">
-                <legend className="text-lg font-semibold px-2 text-gray-700">Productos a Separar</legend>
+            <fieldset className="border p-3 rounded-lg">
+                <legend className="text-base font-semibold px-2 text-gray-700">Productos a Separar</legend>
                 <ProductSelector products={availableProducts} onAdd={addProductToPlan} />
-                <div className="mt-4 max-h-40 overflow-y-auto space-y-2">
+                <div className="mt-3 max-h-32 overflow-y-auto space-y-2">
                     {selectedProducts.map(p => (
-                        <div key={p.product_id} className="flex justify-between items-center bg-gray-100 p-2 rounded-md text-sm">
+                        <div key={p.product_id} className="flex justify-between items-center bg-gray-100 p-2 rounded-md text-xs">
                             <span>{p.name} (x{p.quantity}) - {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(p.price * p.quantity)}</span>
                             <button type="button" onClick={() => removeProductFromPlan(p.product_id)} className="text-red-500 font-bold hover:text-red-700 px-2">X</button>
                         </div>
@@ -160,20 +157,20 @@ const LayawayForm = ({ onPlanAdded, closeModal }) => {
                 </div>
             </fieldset>
 
-            <fieldset className="border p-4 rounded-lg">
-                 <legend className="text-lg font-semibold px-2 text-gray-700">Resumen Financiero</legend>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                    <input name="down_payment" placeholder="Abono Inicial" type="number" value={customerData.down_payment} onChange={handleCustomerChange} required className="p-2 border rounded-md" min="0" />
-                    <div className="text-right">
-                        <p className="text-gray-600">Valor Total del Apartado:</p>
-                        <p className="text-2xl font-bold text-gray-800">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalValue)}</p>
-                    </div>
+            <fieldset className="border p-3 rounded-lg">
+                 <legend className="text-base font-semibold px-2 text-gray-700">Resumen Financiero</legend>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+                     <input name="down_payment" placeholder="Abono Inicial" type="number" value={customerData.down_payment} onChange={handleCustomerChange} required className="p-2 border rounded-md" min="0" />
+                     <div className="text-left md:text-right">
+                         <p className="text-xs text-gray-600">Valor Total del Apartado:</p>
+                         <p className="text-xl font-bold text-gray-800">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalValue)}</p>
+                     </div>
                  </div>
             </fieldset>
 
-            <div className="flex justify-end pt-4 border-t mt-6">
-                <button type="button" onClick={closeModal} className="mr-3 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-green-700 font-semibold">Crear Plan</button>
+            <div className="flex justify-end pt-3 border-t mt-4">
+                <button type="button" onClick={closeModal} className="mr-3 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold text-sm">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-green-700 font-semibold text-sm">Crear Plan</button>
             </div>
         </form>
     );

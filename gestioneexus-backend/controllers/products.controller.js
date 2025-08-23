@@ -2,7 +2,7 @@ const pool = require('../db/database');
 const { logAction } = require('../helpers/audit.helper');
 
 const getProducts = async (req, res) => {
-    const { search = '', page = 1, limit = 15 } = req.query; // Cambiamos el límite por defecto a 15
+    const { search = '', page = 1, limit = 15 } = req.query;
     const offset = (page - 1) * limit;
 
     try {
@@ -100,11 +100,52 @@ const deleteProduct = async (req, res) => {
     }
 };
 
+// --- NUEVA FUNCIÓN PARA IMPORTACIÓN MASIVA ---
+const bulkImportProducts = async (req, res) => {
+    const { products } = req.body;
+
+    if (!products || !Array.isArray(products) || products.length === 0) {
+        return res.status(400).json({ msg: 'No se proporcionaron productos válidos para importar.' });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        const query = 'INSERT INTO products (name, brand, category, sizes, reference, quantity, price, cost) VALUES ?';
+        
+        const values = products.map(p => [
+            p.NOMBRE, p.MARCA, p.CATEGORIA, p.TALLAS, p.REFERENCIA,
+            p.CANTIDAD, p.PRECIO, p.COSTO
+        ]);
+
+        const [result] = await connection.query(query, [values]);
+        
+        await connection.commit();
+        
+        await logAction(req.uid, `Importó masivamente ${result.affectedRows} productos desde un archivo Excel.`);
+        
+        res.status(201).json({ msg: `${result.affectedRows} productos han sido importados exitosamente.` });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('Error en la importación masiva:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(400).json({ msg: 'El archivo contiene una o más referencias de producto que ya existen.' });
+        }
+        res.status(500).json({ msg: 'Ocurrió un error en el servidor durante la importación.' });
+    } finally {
+        connection.release();
+    }
+};
+
 module.exports = {
     getProducts,
     getProductById,
     getProductByReference,
     createProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    bulkImportProducts // <-- Exportamos la nueva función
 };
